@@ -1,4 +1,3 @@
-
 // Pinbelegung:
 // A0 : NTC Sernsor
 // A1 : Rührwerk Relais
@@ -27,6 +26,7 @@
 // Beispiel: CHRpayTDK50.0k43.3c
 // C=Stringstart / c=Stringende
 // H=Heizung an / h=Heizung aus / R=Rührwerk an / r=Rührwer aus / P=Pumpe an / p=Pumpe aus / A=Alarm an / a=Alarm aus
+// x=inaktiv / y=aktiv / z=pausiert
 // T= Zu lange keine Änderung im Logfile
 // D=DS18B20 / N=NTC10k / d=Display
 // K50.0=Solltemperatur / k41.3=Isttemperatur
@@ -97,8 +97,8 @@ byte pumpe[8] = {  // Pumpensymbol erstellen
 
 float temperatur, temperaturalt, temperaturneu;
 
-const boolean aus = HIGH;                          // Hier kann bei Low-Aktiven Relaiskarten einfach High und Low vertauscht werden
-const boolean an = LOW;                            // Hier kann bei Low-Aktiven Relaiskarten einfach High und Low vertauscht werden
+const boolean aus = LOW;                          // Hier kann bei Low-Aktiven Relaiskarten einfach High und Low vertauscht werden
+const boolean an = HIGH;                            // Hier kann bei Low-Aktiven Relaiskarten einfach High und Low vertauscht werden
 
 const int Heizung = 3;                             // Im folgenden sind die Pins der Sensoren und Aktoren festgelegt
 const int Ruehrwerk = 15;
@@ -146,11 +146,15 @@ void loop() {
   digitalWrite(Summer, aus);
   digitalWrite(Ruehrwerk, aus);
   digitalWrite(Pumpe, aus);
-  lcd.setCursor(0, 1);                // Startbildschirm
-  lcd.print("  Braudisplay V2.0  ");
+  lcd.setCursor(0, 0);                // Startbildschirm
+  lcd.print("      Brauerei      ");
+  lcd.setCursor(0, 1);          
+  lcd.print(" Arduino LAN Server ");
   lcd.setCursor(0, 2);
-  lcd.print("      by emilio     ");
-  delay(2000);
+  lcd.print("       V01.00       ");
+  lcd.setCursor(0, 3);
+  lcd.print("     by emilio      ");
+  delay(3000);
   temperatur = temp2();               // Erste Temperaturerfassung
   Braudisplay();                      // Hauptprogramm starten
 }
@@ -229,7 +233,7 @@ BStart:
   }
   delay(200);
 
-  for (int schleife2 = 0; schleife2 <= 9; schleife2++)  // Schleife für Serielle Kommunikation
+  for (int schleife2 = 0; schleife2 <= 9; schleife2++)  // Schleife für UDP Kommunikation
   {
     delay(210);
     lcd.setCursor(0, 1);
@@ -371,6 +375,7 @@ BStart:
     {
       lcd.setCursor(12, 1);
       lcd.print(" manuell");
+      statechar='m';
       lcd.setCursor(2, 3);
       lcd.print(" --.-");
       if (digitalRead(Heizschalter) == HIGH) {
@@ -417,16 +422,17 @@ BStart:
         digitalWrite(Summer, an);
       }
     }
-  }
-
-  if (((received[0] == 'C') && (received[18] == 'c')) && (received[7] == 'D' )) {
-    sensor = 'D'; // Sensor Typ einstellen
-  }
-  else if (((received[0] == 'C') && (received[18] == 'c')) && (received[7] == 'd' )) {
-    sensor = 'd';
-  }
-  else if (((received[0] == 'C') && (received[18] == 'c')) && (received[7] == 'N' )) {
-    sensor = 'N';
+  
+    if (((received[0] == 'C') && (received[18] == 'c')) && (received[7] == 'D' )) {
+      sensor = 'D'; // Sensor Typ einstellen
+    }
+    else if (((received[0] == 'C') && (received[18] == 'c')) && (received[7] == 'd' )) {
+      sensor = 'd';
+    }
+    else if (((received[0] == 'C') && (received[18] == 'c')) && (received[7] == 'N' )) {
+      sensor = 'N';
+    }
+    
   }
 
   EthernetClient client = server.available();        // WEB-Server für Brauerei
@@ -458,6 +464,7 @@ BStart:
           if (statechar=='i') {client.print("<td><h2>INAKTIV</h2></td>");}
           if (statechar=='a') {client.print("<td><h2>AKTIV</h2></td>");}
           if (statechar=='p') {client.print("<td><h2>PAUSIERT</h2></td>");}
+          if (statechar=='m') {client.print("<td><h2>MANUELL</h2></td>");}
           client.println("</tr>");
           client.print("<tr>");
           client.print("<td><h2>Ist-Temperatur:</h2></td>");
@@ -555,7 +562,7 @@ void temperaturmessungNTC()           // Glättungsroutine für NTC-Messung
   temperaturneu = 0;
   for (int c = 1; c <= 10; c++) {
     delay(20);
-    temperaturneu = temperaturneu + temp(analogRead(1));
+    temperaturneu = temperaturneu + temp(analogRead(0));
   }
   temperaturneu = temperaturneu / 10;
   if (temperaturalt - temperaturneu < 2 and temperaturneu - temperaturalt < 2)
