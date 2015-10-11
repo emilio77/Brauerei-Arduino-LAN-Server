@@ -83,27 +83,41 @@ end;
 
 procedure TMainForm.Tmr_RcvTimer(Sender: TObject);
 var solltemp, isttemp, line2, temp: string;
+    itemp,iisttemp,isolltemp,i:integer;
 begin
   Tmr_Rcv.Enabled := false ;
+  DecimalSeparator := '.';
   timestamp[1]:= GetFileModifyDate(displayfilename);
   if FileExists(displayfilename) then
   begin
     try
       AssignFile(myFile, displayfilename);
       Reset(myFile);
-      ReadLn(myFile, isttemp); if length(isttemp)<4 then repeat isttemp:=' '+isttemp until length(isttemp)=4;
-      ReadLn(myFile, solltemp); if length(solltemp)<4 then repeat solltemp:=' '+solltemp until length(solltemp)=4;
-      ReadLn(myFile, temp); if temp='1' then line2:='CH' else line2:='Ch';
-      ReadLn(myFile, temp); if temp='1' then line2:=line2+'R' else line2:=line2+'r';
-      ReadLn(myFile, temp); if temp='1' then line2:=line2+'P' else line2:=line2+'p';
-      ReadLn(myFile, temp); if temp='1' then line2:=line2+'A' else line2:=line2+'a';
-      ReadLn(myFile, temp); if temp='aktiv' then line2:=line2+'y' else if temp='pausiert' then line2:=line2+'z' else line2:=line2+'x';
+      ReadLn(myFile, isttemp); iisttemp:=round(strtofloat(isttemp)*10);
+      ReadLn(myFile, solltemp); isolltemp:=round(strtofloat(solltemp));
+      ReadLn(myFile, temp); if temp='1' then itemp:=1 else itemp:=0;
+      ReadLn(myFile, temp); if temp='1' then itemp:=itemp+2;
+      ReadLn(myFile, temp); if temp='1' then itemp:=itemp+4;
+      ReadLn(myFile, temp); if temp='1' then itemp:=itemp+8;
+      line2:='C'+char(itemp);
+      ReadLn(myFile, temp); if temp='aktiv' then itemp:=1 else if temp='pausiert' then itemp:=2 else itemp:=4;
+      if timestamp[1]=timestamp[3] then itemp:=itemp+8 else itemp:=itemp+16;
+      if ComboBox2.Text='Display' then itemp:=itemp+32 else if ComboBox2.Text='DS18B20' then itemp:=itemp+64 else itemp:=itemp+128;
+      if iisttemp>255 then repeat begin iisttemp:=iisttemp-256; i:=i+1; end until iisttemp<256;
+      line2:=line2+char(itemp)+char(isolltemp)+char(i)+char(iisttemp);
+      ReadLn(myFile, temp); if temp<>'0' then itemp:=128 else itemp:=0;
+      ReadLn(myFile, temp); if temp<>'0' then itemp:=itemp+64;
+      ReadLn(myFile, temp); if temp<>'0' then itemp:=itemp+32;
+      ReadLn(myFile, temp); if temp<>'0' then itemp:=itemp+16;
+      ReadLn(myFile, temp); if temp<>'0' then itemp:=itemp+8;
+      ReadLn(myFile, temp); if temp<>'0' then itemp:=itemp+4;
+      ReadLn(myFile, temp); if temp<>'0' then itemp:=itemp+2;
+      ReadLn(myFile, temp); if temp<>'0' then itemp:=itemp+1;
+      line2:=line2+char(itemp);
+      ReadLn(myFile, temp); if temp<>'0' then itemp:=2 else itemp:=0;
+      ReadLn(myFile, temp); if temp<>'0' then itemp:=itemp+1;
+      line2:=line2+char(itemp)+('----------c');
       CloseFile(myFile);
-      if timestamp[1]=timestamp[3] then line2:=line2+('T') else line2:=line2+('t') ;
-      if ComboBox2.Text='Display' then line2:=line2+('d') else if ComboBox2.Text='DS18B20' then line2:=line2+('D') else line2:=line2+('N');
-      if temp='inaktiv' then line2:=line2+('K--.-') else line2:=line2+('K'+solltemp);
-      if ComboBox2.Text='Display' then line2:=line2+('k'+isttemp) else line2:=line2+('---.-');
-      line2:=line2+('c');
       IdUDPClient1.Active := true;
       IdUDPClient1.Send(line2);
       IdUDPClient1.Active := false;
